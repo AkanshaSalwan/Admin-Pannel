@@ -97,6 +97,32 @@ router.post('/create', async(req,res)=>{
      res.status(201).json(category);
 });
 
+
+ const createCategories = (categories, parentId=null)=>{
+    const categoryList =[];
+    let category;
+
+    if(parentId == null){
+        category = categories.filter((cat) => cat.parentId == undefined);
+    } else {
+        category = categories.filter((cat) => cat.parentId == parentId); 
+    }
+
+    for (let cat of category) {
+        categoryList.push({
+            _id: cat._id,
+            name: cat.name,
+            images: cat.images,
+            color: cat.color,
+            slug: cat.slug,
+            children: createCategories(categories, cat._id)
+        });
+    }
+
+    return categoryList;
+ }
+
+
 router.get('/' , async(req,res)=>{
     try{
         const categoryList = await Category.find();
@@ -109,11 +135,25 @@ router.get('/' , async(req,res)=>{
             const categoryData = createCategories(categoryList);
 
             return res.status(200).json({
-                categoryList: categoryData
+                categoryList: categoryData,
             });
         }
         
     }catch(error){
         console.log(error);
+    }
+});
+
+router.get('/get/count', async (req, res) =>{
+
+    const categoryCount = await Category.countDocuments({parentId:undefined});
+
+    if(!categoryCount){
+        res.status(500).json({ success: false});
+    }
+    else{
+        res.send({
+            categoryCount: categoryCount,
+        });
     }
 });
