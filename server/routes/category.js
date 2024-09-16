@@ -5,14 +5,61 @@ const router = express.Router();
 const slugify = require("slugify");
 const multer = require("multer");
 const fs = require("fs");
+const { create } = require("domain");
 
 const cloudinary = require("cloudinary").v2;
 
 cloudinary.config({
-    // cloud_
-})
+    cloud_name: process.env.cloudinary_Config_Cloud_Name,
+    api_key: process.env.cloudinary_Config_api_key,
+    api_secret: process.env.cloudinary_Config__api_secret,
+    secure: true,
+});
 
 var imagesArr = [];
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cd){
+        cd(null, "uploads")
+    },
+    filename: function (req, file, cd){
+        cd(null, `${Date.now()}_${file.originalname}`)
+    },
+});
+
+const upload = multer({storage: storage});
+
+router.post('/upload', upload.array("images"), async (req, res) => {
+    imagesArr = [];
+    try{
+      for(let i  = 0; i < req?.file?.length; i++){
+        const options = {
+            use_filename: true,
+            unique_filename: false,
+            overwrite: false,
+        };
+        const img = await cloudinary.uploader.upload(
+            req.files[i].path,
+            options,
+            function (error, result){
+                imagesArr.push(result.secure_url);
+                fs.unlinkSync(`uploads/${req.files[i].filename}`);
+            }
+        );
+
+        let imagesUploaded = new ImageUpload({
+            images: imagesArr,
+        });
+
+        imagesUploaded = await imagesUploaded.save();
+        return res.status(200).json(imagesArr);
+
+      }
+
+    }catch(error){
+        console.log(error);
+    }
+});
 
 router.post('/create', async(req,res)=>{
     if(imagesArr.length > 0){
@@ -48,4 +95,25 @@ router.post('/create', async(req,res)=>{
      imagesArr = [];
 
      res.status(201).json(category);
+});
+
+router.get('/' , async(req,res)=>{
+    try{
+        const categoryList = await Category.find();
+
+        if(!categoryList){
+            res.status(500).json({ success: false });
+        }
+
+        if(categoryList) {
+            const categoryData = createCategories(categoryList);
+
+            return res.status(200).json({
+                categoryList: categoryData
+            });
+        }
+        
+    }catch(error){
+        console.log(error);
+    }
 });
