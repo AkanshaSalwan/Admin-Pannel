@@ -18,6 +18,13 @@ app.use(express.json());
 //     res.json({status:"success"})
 // })
 
+//Routes
+
+const categoryRoutes = require('./routes/categories');
+
+app.use("/uploads", express.static("uploads"));
+app.use(`/api/category`, categoryRoutes);
+
 // DATABASE Connection
 mongoose.connect(process.env.CONNECTION_STRING, {
     useNewUrlParser: true,

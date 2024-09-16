@@ -6,6 +6,7 @@ const slugify = require("slugify");
 const multer = require("multer");
 const fs = require("fs");
 const { create } = require("domain");
+const { error } = require("console");
 
 const cloudinary = require("cloudinary").v2;
 
@@ -157,3 +158,120 @@ router.get('/get/count', async (req, res) =>{
         });
     }
 });
+
+router.get(`/subCat/get/count`, async (req, res) => {
+    const category = await Category.find();
+
+    if(!category){
+        res.status(500).json({ success: false});
+    }
+    else{
+
+        const subCatList = [];
+        for (let cat of category){
+            if(cat.parentId!== undefined){
+                subCatList.push(cat);
+            }
+        }
+
+        res.send({
+            categoryCount: subCatList.length,
+        });
+    }
+});
+
+router.get('/:id', async (req, res) => {
+    categoryEditId = req.params.id;
+
+    const category = await Category.findById(req.params.id);
+
+    if(!category){
+        res
+            .status(500)
+            .json({ message: "The category with the given ID was not found."});
+    }
+    return res.status(200).send(category);
+});
+
+router.delete('/deleteImage', async ( req, res) => {
+    const imgUrl = req.query.img;
+
+    const urlArr = imgUrl.split|("/");
+    const image = urlArr[urlArr.length - 1];
+
+    const imageName = image.split(".")[0];
+
+    const response = await cloudinary.uploader.destroy(
+        imageName,
+        (error, result) => {
+
+        }
+    );
+
+    if(response){
+        res.status|(200).send(response);
+    }
+});
+
+router.delete("/:id",  async (req, res) => {
+    const category = await Category.findById(req.params.id);
+    const images = category.images;
+
+    for (img of images) {
+        const imgUrl = img;
+        const urlArr = imgUrl.split("/");
+        const image = urlArr[urlArr.length - 1];
+
+        const imageName = image.split(".")[0];
+
+        cloudinary.uploader.destroy(imageName, (error, result) => {
+
+        });
+    }
+
+    const deletedCat = await Category.findByIdAndDelete(req.params.id);
+
+    if(!deletedCat){
+        res.status(404).json({
+            message: "Category not found!",
+            success: false,
+        });
+    }
+
+    res.status(200).json({
+        success: true,
+        message: "Category Deleted!",
+    });
+
+});
+
+router.put("/:id", async (req, res) => {
+    // console.log({
+    //     name: req.body.name,
+    //     images: req.body.images,
+    //     color: req.body.color,
+    //     id: req.params.id
+    // })
+
+    const category = await Category.findByIdAndUpdate(
+        req.params.id,
+        {
+            name: req.body.name,
+            images: req.body.images,
+            color: req.body.color,
+        },
+        { new: true}
+    );
+    if(!category){
+        return res.status(500).json({
+            message: "Category cannot be updated!",
+            success: false,
+        });
+    }
+
+    imagesArr = [];
+
+    res.send(category);
+});
+
+module.exports = router;
